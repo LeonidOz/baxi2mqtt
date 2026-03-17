@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baxi2mqtt"
+version = "1.0.0"
+description = "Baxi Connect+ to MQTT bridge with Home Assistant support"
+authors = [
+    {name = "BaxiMQTT Team", email = "support@baximqtt.local"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = ["baxi", "mqtt", "home-automation", "heating", "zont"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Home Automation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "websockets>=12.0",
+    "paho-mqtt>=2.1.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0.0",
+    "aiohttp>=3.8.0",
+    "psutil>=5.9.0"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/baxi2mqtt"
+Repository = "https://github.com/your-org/baxi2mqtt"
+Documentation = "https://github.com/your-org/baxi2mqtt#readme"
+"Bug Tracker" = "https://github.com/your-org/baxi2mqtt/issues"
+
+[project.scripts]
+baxi2mqtt = "app:main"
+
+[tool.setuptools]
+py-modules = [
+    "app",
+    "config_validator",
+    "container_healthcheck",
+    "health_checker",
+    "homeassistant_discovery",
+    "reconnection_manager",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --cov=app --cov-report=html --cov-report=term-missing"
+asyncio_mode = "auto"

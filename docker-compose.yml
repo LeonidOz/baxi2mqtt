@@ -1,0 +1,58 @@
+services:
+  baxi2mqtt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: baxi2mqtt:latest
+    container_name: baxi2mqtt
+    
+    env_file:
+      - .env
+
+    # Ports
+    ports:
+      - "${HEALTH_PORT:-8080}:${HEALTH_PORT:-8080}"  # Health check endpoint
+    
+    # Volumes
+    volumes:
+      # Configuration (read-only)
+      - ./config:/app/config:ro
+      # Logs
+      - ./logs:/app/logs
+      # Optional: custom config override
+      - ./config/custom.yaml:/app/config/custom.yaml:ro
+    
+    # Environment variables
+    environment:
+      PYTHONUNBUFFERED: "1"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: ${TZ:-Europe/Moscow}
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "container_healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Network
+    networks:
+      - default

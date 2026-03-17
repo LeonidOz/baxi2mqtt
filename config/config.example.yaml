@@ -1,0 +1,74 @@
+# Baxi Connect+ Configuration
+baxi:
+  # WebSocket URL of the Baxi Connect+ device
+  # Examples: "ws://baxi.local/ws" or "wss://baxi.local/ws"
+  ws_url: "ws://baxi.local/ws"
+
+  # Username for Baxi Connect+ authentication
+  # Replace with the actual username configured in the Baxi app
+  username: "User"
+
+  # Password for Baxi Connect+ authentication
+  # Leave empty if no password is set
+  password: ""
+
+# MQTT Broker Configuration
+mqtt:
+  # MQTT broker hostname or IP address
+  # Examples: "mqtt.local", "mqtt", "broker.example.com"
+  host: "mqtt.local"
+
+  # MQTT broker port (standard: 1883, SSL: 8883)
+  port: 1883
+
+  # MQTT username (leave empty for anonymous connection)
+  username: ""
+
+  # MQTT password (leave empty if no password)
+  password: ""
+
+  # MQTT client ID (optional, defaults to "baxi2mqtt")
+  client_id: "baxi2mqtt"
+
+  # MQTT keepalive interval in seconds
+  keepalive: 60
+
+  # MQTT QoS level (0, 1, or 2)
+  qos: 1
+
+# Logging Configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+
+  # Log format
+  format: "%(asctime)s [%(levelname)s] %(message)s"
+
+  # Log file path (optional, leave empty for console only)
+  file: ""
+
+# Health Check Configuration
+health:
+  # HTTP port for health check endpoint
+  port: 8080
+
+  # Health check interval in seconds
+  interval: 30
+
+  # Component timeout in seconds
+  timeout: 10
+
+# Home Assistant Auto-Discovery
+homeassistant:
+  # Enable/disable Home Assistant auto-discovery
+  enabled: true
+
+  # MQTT discovery prefix (default: "homeassistant")
+  discovery_prefix: "homeassistant"
+
+  # Device information
+  device:
+    name: "Baxi Connect+"
+    model: "Connect+"
+    manufacturer: "Baxi"
+    sw_version: "1.0.0"
