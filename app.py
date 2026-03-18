@@ -7,7 +7,7 @@ import re
 import signal
 from config_validator import AppConfig, ConfigError
 from health_checker import HealthChecker
-from homeassistant_discovery import publish_climate_discovery, publish_availability
+from homeassistant_discovery import clear_climate_discovery, publish_climate_discovery, publish_availability
 from reconnection_manager import WebSocketReconnectionManager
 
 def setup_logging(config: AppConfig):
@@ -59,11 +59,17 @@ class BaxiMQTTDaemon:
         self.heating_ids = []
         self.heating_names = {}
         self._availability_published = set()
+        self._offline_heating_ids = set()
+        self._stale_discovery_cleared = set()
         self._discovery_published_names = {}
         self.target_temps = {}
 
         # Health checker
-        self.health_checker = HealthChecker(cfg)
+        websocket_message_timeout = max(cfg.health.timeout * 2, POLL_INTERVAL + cfg.health.timeout)
+        self.health_checker = HealthChecker(
+            cfg,
+            websocket_message_timeout=websocket_message_timeout
+        )
 
         # Reconnection managers
         self.ws_reconnection_manager = WebSocketReconnectionManager(
@@ -282,15 +288,6 @@ class BaxiMQTTDaemon:
                     self.heating_ids = data["ids"]
                     logging.info(f"Heating IDs: {self.heating_ids}")
 
-                    if self.cfg.homeassistant.enabled:
-                        self.publish_discovery_if_needed(self.heating_ids)
-                        for hid in self.heating_ids:
-                            publish_availability(
-                                self.mqtt, hid, True,
-                                qos=getattr(self.cfg.mqtt.qos, "value", self.cfg.mqtt.qos),
-                            )
-                            self._availability_published.add(hid)
-
                     for hid in self.heating_ids:
                         await self.ws_send({"id": hid, "req_state": 0})
                     continue
@@ -300,14 +297,27 @@ class BaxiMQTTDaemon:
                     hid = data["id"]
 
                     if data.get("failed") == 1:
-                        logging.warning(f"State request failed for heating zone {hid}")
-                        if self.cfg.homeassistant.enabled:
+                        if hid not in self._offline_heating_ids:
+                            logging.warning(f"State request failed for heating zone {hid}")
+                        if self.cfg.homeassistant.enabled and hid in self._availability_published:
                             publish_availability(
                                 self.mqtt, hid, False,
                                 qos=getattr(self.cfg.mqtt.qos, "value", self.cfg.mqtt.qos),
                             )
-                            self._availability_published.discard(hid)
+                        elif self.cfg.homeassistant.enabled and hid not in self._stale_discovery_cleared:
+                            clear_climate_discovery(
+                                self.mqtt, self.cfg, hid,
+                                qos=getattr(self.cfg.mqtt.qos, "value", self.cfg.mqtt.qos),
+                            )
+                            self._stale_discovery_cleared.add(hid)
+                        self._availability_published.discard(hid)
+                        self._offline_heating_ids.add(hid)
                         continue
+
+                    if hid in self._offline_heating_ids:
+                        logging.info(f"Heating zone {hid} is responding again")
+                        self._offline_heating_ids.discard(hid)
+                    self._stale_discovery_cleared.discard(hid)
 
                     if "c" in data:
                         self.mqtt_pub(f"{hid}/current_temperature", data["c"])
@@ -326,8 +336,9 @@ class BaxiMQTTDaemon:
                         self.heating_names[hid] = data["name"]
                         if previous_name != data["name"]:
                             self.mqtt_pub(f"{hid}/name", data["name"])
-                        if self.cfg.homeassistant.enabled:
-                            self.publish_discovery_if_needed([hid])
+
+                    if self.cfg.homeassistant.enabled:
+                        self.publish_discovery_if_needed([hid])
 
                     if hid not in self._availability_published and self.cfg.homeassistant.enabled:
                         publish_availability(
@@ -375,6 +386,8 @@ class BaxiMQTTDaemon:
                 self.heating_ids = []
                 self.heating_names = {}
                 self._availability_published = set()
+                self._offline_heating_ids = set()
+                self._stale_discovery_cleared = set()
                 self._discovery_published_names = {}
                 self.target_temps = {}
 

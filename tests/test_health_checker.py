@@ -36,10 +36,16 @@ class TestHealthChecker:
         """Test HealthChecker initialization."""
         assert health_checker.config.health.port == 8080
         assert health_checker.start_time is not None
+        assert health_checker.websocket_message_timeout == 20
         assert health_checker.websocket_connected is False
         assert health_checker.mqtt_connected is False
         assert health_checker.messages_received == 0
         assert health_checker.messages_sent == 0
+
+    def test_init_with_custom_websocket_timeout(self, config):
+        """Test custom WebSocket timeout can be provided by the daemon."""
+        health_checker = HealthChecker(config, websocket_message_timeout=70)
+        assert health_checker.websocket_message_timeout == 70
     
     def test_update_websocket_status(self, health_checker):
         """Test WebSocket status updates."""
@@ -151,6 +157,31 @@ class TestHealthChecker:
         assert status["status"] == "unhealthy"
         assert status["components"]["websocket"]["status"] == "unhealthy"
         assert status["components"]["mqtt"]["status"] == "unhealthy"
+
+    def test_custom_websocket_timeout_avoids_false_positive_between_polls(self, config):
+        """WebSocket health should stay healthy between normal polling cycles."""
+        health_checker = HealthChecker(config, websocket_message_timeout=70)
+        health_checker.update_websocket_status(True)
+        health_checker.update_mqtt_status(True)
+        health_checker.websocket_last_message = datetime.now(timezone.utc) - timedelta(seconds=55)
+
+        status = health_checker.get_health_status()
+
+        assert status["status"] == "healthy"
+        assert status["components"]["websocket"]["status"] == "healthy"
+
+    def test_custom_websocket_timeout_still_detects_real_stale_connection(self, config):
+        """WebSocket health should turn unhealthy once the extended timeout is exceeded."""
+        health_checker = HealthChecker(config, websocket_message_timeout=70)
+        health_checker.update_websocket_status(True)
+        health_checker.update_mqtt_status(True)
+        health_checker.websocket_last_message = datetime.now(timezone.utc) - timedelta(seconds=80)
+
+        status = health_checker.get_health_status()
+
+        assert status["status"] == "unhealthy"
+        assert status["components"]["websocket"]["status"] == "unhealthy"
+        assert status["components"]["websocket"]["reason"] == "message_timeout"
 
     def test_should_not_log_unhealthy_during_startup_grace(self, health_checker):
         """Test unhealthy status is suppressed during startup grace period."""

@@ -96,6 +96,13 @@ def publish_climate_discovery(
         logging.info("HA discovery: published climate config for heating_id=%s topic=%s", hid, topic)
 
 
+def clear_climate_discovery(mqtt_client, cfg: AppConfig, heating_id: int, qos: int = 1) -> None:
+    """Remove a retained climate discovery topic so Home Assistant drops the entity."""
+    topic = discovery_topic(cfg, "climate", f"heating_{heating_id}")
+    mqtt_client.publish(topic, "", retain=True, qos=qos)
+    logging.info("HA discovery: cleared climate config for heating_id=%s topic=%s", heating_id, topic)
+
+
 def publish_availability(mqtt_client, heating_id: int, available: bool, qos: int = 1) -> None:
     """Publish availability status for a heating zone (so HA can show online/offline)."""
     topic = f"{BASE_TOPIC}/{heating_id}/status"

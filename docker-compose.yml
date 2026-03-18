@@ -19,8 +19,6 @@ services:
       - ./config:/app/config:ro
       # Logs
       - ./logs:/app/logs
-      # Optional: custom config override
-      - ./config/custom.yaml:/app/config/custom.yaml:ro
     
     # Environment variables
     environment:

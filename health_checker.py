@@ -17,10 +17,15 @@ from config_validator import AppConfig
 class HealthChecker:
     """Health monitoring and HTTP endpoint provider."""
     
-    def __init__(self, config: AppConfig):
+    def __init__(self, config: AppConfig, websocket_message_timeout: Optional[int] = None):
         self.config = config
         self.start_time = datetime.now(timezone.utc)
         self.startup_grace_seconds = max(config.health.interval, config.health.timeout * 2)
+        self.websocket_message_timeout = (
+            websocket_message_timeout
+            if websocket_message_timeout is not None
+            else config.health.timeout * 2
+        )
         
         # Component status tracking
         self.websocket_connected = False
@@ -128,7 +133,7 @@ class HealthChecker:
         ws_health = self._check_component_health(
             self.websocket_connected, 
             self.websocket_last_message, 
-            self.config.health.timeout * 2  # Double timeout for WebSocket
+            self.websocket_message_timeout
         )
         
         mqtt_health = self._check_component_health(
